@@ -63,6 +63,86 @@ int dma_init(int m){
     }
     return 0;
 }
+void dma_free (void *p){
+    printf(" in free p %lx\n", (long) p);
+    ptrdiff_t difptr = p - segmentptr;
+    unsigned int*ptr2;
+    ptr2 = (unsigned int*)bitmap;
+    long shift_val = (long)difptr/8;
+    int total_bit = (bitmapsize) * 8;
+    total_bit -= shift_val;
+    int iteration = total_bit / 32;
+    int cur_bit = total_bit;
+    int iter_mod = total_bit%32;
+    if(iter_mod != 0){
+        iteration++;
+    }
+    int k;
+    for(k = 0 ; k < iteration; k++){
+        if(shift_val > 32){
+            shift_val -=32;
+            cur_bit-= 32;
+            ptr2 = ptr2 +1;
+            continue;
+         }
+        unsigned int change_val;
+        if(cur_bit < 32){
+            change_val = pow(2,cur_bit-1) + pow(2,cur_bit-2);
+            change_val = ~change_val;
+        }else{
+            change_val = (pow(2,31) + pow(2,30));
+            change_val = ~change_val;
+        }
+        unsigned int temp = *ptr2 << shift_val;
+        unsigned int temp2 = temp >> shift_val;
+         unsigned int temp3 = *ptr2 ^ temp2;
+
+        //unsigned int* newp = (unsigned int*) p;
+        unsigned int temp4 = temp << 2;
+        printf("girmeden temp4:\n");
+        dma_print_temp(temp4);
+        unsigned int temp5 = temp4;
+        int freesize = 2;
+        while((temp4 & change_val) == temp4 ){
+            temp5 = ~change_val | temp5;
+            printf("temp5:\n");
+            dma_print_temp(temp5);
+            change_val = change_val >> 2;
+            freesize +=2;
+            if(freesize % 32 == 0){
+                memcpy(ptr2, &temp5, sizeof(unsigned int));
+                printf("girmemesi gerek\n");
+                ptr2++;
+                temp4 = *ptr2;
+                temp5 = temp4;
+                cur_bit -=32; 
+                if(cur_bit < 32){
+                    change_val = pow(2,cur_bit-1) + pow(2,cur_bit-2);
+                    change_val = ~change_val;
+                }else{
+                    change_val = (pow(2,31) + pow(2,30));
+                    change_val = ~change_val;
+                }
+            }
+        }
+        k = iteration;
+        unsigned int change_val2;
+        temp5 = temp5>> 2;
+        printf(" çıktıktan sonratemp5:\n");
+        dma_print_temp(temp5);
+        if(cur_bit < 32){
+            change_val2 = pow(2,cur_bit-1) + pow(2,cur_bit-2);
+        }else{
+            change_val2 = (pow(2,31) + pow(2,30));
+        }
+        temp5 = temp5 | change_val2;
+        temp5 = temp5 >> shift_val;
+        temp5 = temp5 | temp3;
+        printf(" mem önce temp5:\n");
+        dma_print_temp(temp5);
+        memcpy(ptr2, &temp5, sizeof(unsigned int));
+    }
+}
 
 void *dma_alloc (int size){
     int newsize = size / 8;
@@ -113,13 +193,25 @@ void *dma_alloc (int size){
                     change_val = change_val + pow(2, cur_bit-1-k);
                 }
             }
+            if(j > 0){
+                change_val = change_val + pow(2,cur_bit-2);
+            }
         }else{
             change_val = pow(2,31);
-            if(newsize > 2){
+            if(newsize > 2 && newsize <=32){
                 int k;
                 for(k = 2; k < newsize; k++){
                     change_val = change_val + pow(2, 31-k);
                 }
+            }
+            else if(newsize >32){
+                 int k;
+                for(k = 2; k < 32; k++){
+                    change_val = change_val + pow(2, 31-k);
+                }
+            }
+             if(j > 0){
+                change_val = change_val + pow(2,30);
             }
         }
         printf("new size is:%d\n",newsize);
@@ -305,3 +397,4 @@ void dma_print_page(int pno){
     }
     printf("\n");
 }
+

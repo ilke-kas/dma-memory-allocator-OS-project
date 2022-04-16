@@ -12,17 +12,16 @@
 int main(){
 
     dma_init(15);
-    void* ptrx = dma_alloc(17);
-    unsigned int* ptr = (unsigned int*) ptrx;
-    *ptr  = 34648739;
+    void* ptrx = dma_alloc(520);
+    //void* ptrx2 = dma_alloc(35);
+    //void* ptrx3 = dma_alloc(2);
     dma_print_bitmap();
-    void* ptrx2 = dma_alloc(35);
+    //void* ptrx4 = dma_alloc(288);
+     //dma_print_bitmap();
+    //void* ptrx4 = dma_alloc(65);
+    dma_free(ptrx);
     dma_print_bitmap();
-    void* ptrx3 = dma_alloc(2);
-    dma_print_bitmap();
-    void* ptrx4 = dma_alloc(65);
-    dma_print_bitmap();
-    
-    dma_print_page(0);
+
+    //dma_print_page(0);
 
 }
