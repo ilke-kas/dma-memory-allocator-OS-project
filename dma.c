@@ -95,7 +95,7 @@ void dma_free (void *p){
         }
         unsigned int temp = *ptr2 << shift_val;
         unsigned int temp2 = temp >> shift_val;
-         unsigned int temp3 = *ptr2 ^ temp2;
+        unsigned int temp3 = *ptr2 ^ temp2;
 
         //unsigned int* newp = (unsigned int*) p;
         unsigned int temp4 = temp << 2;
@@ -110,6 +110,18 @@ void dma_free (void *p){
             change_val = change_val >> 2;
             freesize +=2;
             if(freesize % 32 == 0){
+                if((freesize / 32) == 1){
+                    unsigned int change_val2;
+                    temp5 = temp5>> 2;
+                    if(cur_bit < 32){
+                        change_val2 = pow(2,cur_bit-1) + pow(2,cur_bit-2);
+                    }else{
+                        change_val2 = (pow(2,31) + pow(2,30));
+                    }
+                    temp5 = temp5 | change_val2;
+                    temp5 = temp5 >> shift_val;
+                    temp5 = temp5 | temp3;
+                }
                 memcpy(ptr2, &temp5, sizeof(unsigned int));
                 printf("girmemesi gerek\n");
                 ptr2++;
@@ -126,21 +138,24 @@ void dma_free (void *p){
             }
         }
         k = iteration;
-        unsigned int change_val2;
-        temp5 = temp5>> 2;
-        printf(" çıktıktan sonratemp5:\n");
-        dma_print_temp(temp5);
-        if(cur_bit < 32){
-            change_val2 = pow(2,cur_bit-1) + pow(2,cur_bit-2);
-        }else{
-            change_val2 = (pow(2,31) + pow(2,30));
+        if(freesize < 32){ 
+            unsigned int change_val2;
+            temp5 = temp5>> 2;
+            printf(" çıktıktan sonratemp5:\n");
+            dma_print_temp(temp5);
+            if(cur_bit < 32){
+                change_val2 = pow(2,cur_bit-1) + pow(2,cur_bit-2);
+            }else{
+                change_val2 = (pow(2,31) + pow(2,30));
+            }
+            temp5 = temp5 | change_val2;
+            temp5 = temp5 >> shift_val;
+            temp5 = temp5 | temp3;
         }
-        temp5 = temp5 | change_val2;
-        temp5 = temp5 >> shift_val;
-        temp5 = temp5 | temp3;
         printf(" mem önce temp5:\n");
         dma_print_temp(temp5);
         memcpy(ptr2, &temp5, sizeof(unsigned int));
+        
     }
 }
 
@@ -177,6 +192,7 @@ void *dma_alloc (int size){
     int iteration = total_bit / 32;
     int cur_bit = total_bit;
     int iter_mod = total_bit%32;
+    int started = 0;
     unsigned int* ptr2 = (unsigned int*)bitmap;
     if(iter_mod != 0){
         iteration++;
@@ -193,7 +209,7 @@ void *dma_alloc (int size){
                     change_val = change_val + pow(2, cur_bit-1-k);
                 }
             }
-            if(j > 0){
+            if(cond > j || started ==1){
                 change_val = change_val + pow(2,cur_bit-2);
             }
         }else{
@@ -210,13 +226,15 @@ void *dma_alloc (int size){
                     change_val = change_val + pow(2, 31-k);
                 }
             }
-             if(j > 0){
+             if(cond>j|| started == 1){
+                 printf("condition sağlandıııç\n");
                 change_val = change_val + pow(2,30);
             }
         }
         printf("new size is:%d\n",newsize);
         //find the place where to change bitmap
         if(cond <= j){
+            started = 1;
             unsigned local_shift_val_temp = newsize-(shift_val % 32 + newsize - 32);
             unsigned local_shift_val = 32- local_shift_val_temp;
             printf("in j:%d, local_temp:%u, local_shift:%u\n",j,local_shift_val_temp,local_shift_val);
@@ -280,12 +298,12 @@ void* lookbitmap(int size){
     for(j = 0 ; j < iteration; j++){
         unsigned int shift_val;
         if(cur_bit < 32){
-            shift_val = pow(2,cur_bit-1) + pow(2,cur_bit-2); // BUNU total_bit ten değiştirdiniz
+            shift_val = pow(2,cur_bit-1) + pow(2,cur_bit-2);
         }else{
             shift_val = pow(2,31) + pow(2,30); 
         }
 
-        for( i = 0 ; i < cur_bit/2; i++){
+        for( i = 0 ; i < 16; i++){ //burası curbit/2ydi 
             unsigned int result = (*ptr) & shift_val;
             printf("%d-ptr: %u, shift_val:%u, result:%u\n",i,(*ptr),shift_val,result);
             if(result == shift_val){
@@ -302,10 +320,8 @@ void* lookbitmap(int size){
                 printf("in func ptrreturn %lx\n", (long) ptrreturn);
                 return ptrreturn;
             }
-            shift_val = shift_val >> 1;
-            shift_val = shift_val >> 1;
+            shift_val = shift_val >> 2;
         }
-       
         ptr = ptr + 1;
         cur_bit = cur_bit - 32;
         if(cur_bit <= 0){
