@@ -7,17 +7,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 /* Your Library Global Variables */
 void *segmentptr; // points to the start of memory segment to manage
 int   segmentsize;  // size of segment to manage
 void* bitmap;
 int  bitmapsize;
+int fragsize;
 
 
 
 int dma_init(int m){
     void *p;
+    fragsize = 0;
     //check the size of the requested allocation
     if(m < 14 || m > 22){
         printf("M value should be in between 14 and 22 inclusive\n");
@@ -62,9 +65,12 @@ int dma_init(int m){
 }
 
 void *dma_alloc (int size){
-    int newsize = size / 16;
-    int newmod = size % 16;
+    int newsize = size / 8;
+    int newmod = size % 8;
     if(newmod != 0){
+        newsize++;
+    }
+    if(newsize %2 == 1){
         newsize++;
     }
     void* ptr = lookbitmap(size);
@@ -75,48 +81,96 @@ void *dma_alloc (int size){
         return NULL;
     }
     //change bitmap
+     ptrdiff_t difptr = ptr - segmentptr;
+    //printf("difptr is: %ld\n",(long int)difptr);
+    long int shift_val = (long int)difptr /8;
+    printf("shiftval is:%ld\n",shift_val);
+    long int shift_iter = (shift_val + newsize )/ 32;
+    printf("shiftiter is:%ld\n",shift_iter);
+    long int shift_mod = (shift_val + newsize )% 32;
+    if(shift_mod != 0){
+        shift_iter++;
+    }
+    int cond = shift_val/32;
+    //change bitmap
     int total_bit = bitmapsize * 8;
     int iteration = total_bit / 32;
     int cur_bit = total_bit;
     int iter_mod = total_bit%32;
-    unsigned int* ptr = (unsigned int*)bitmap;
+    unsigned int* ptr2 = (unsigned int*)bitmap;
     if(iter_mod != 0){
         iteration++;
     }
     int j;
-    for(j = 0 ; j < iteration; j++){
+    printf("befor newsize is:%d\n",newsize);
+    for(j = 0 ; j < shift_iter; j++){
         unsigned int change_val;
         if(cur_bit < 32){
-            if(newsize == 2){
-                change_val = pow(2,cur_bit-1) ;
+            change_val = pow(2,cur_bit-1); //BURDA KALDINIZ
+            if(newsize > 2){
+                int k;
+                for(k = 2; k < newsize; k++){
+                    change_val = change_val + pow(2, cur_bit-1-k);
+                }
             }
-            else{
-                change_val = pow(); //BURDA KALDINIZ
-            }
-            
         }else{
-            if(newsize == 2){
-                change_val = pow(2,31);
-            }
-            else{
-                change_val = pow(); // BURDA KALDINIZ
+            change_val = pow(2,31);
+            if(newsize > 2){
+                int k;
+                for(k = 2; k < newsize; k++){
+                    change_val = change_val + pow(2, 31-k);
+                }
             }
         }
-
-
+        printf("new size is:%d\n",newsize);
+        //find the place where to change bitmap
+        if(cond <= j){
+            unsigned local_shift_val_temp = newsize-(shift_val % 32 + newsize - 32);
+            unsigned local_shift_val = 32- local_shift_val_temp;
+            printf("in j:%d, local_temp:%u, local_shift:%u\n",j,local_shift_val_temp,local_shift_val);
+            if(local_shift_val_temp < 0){
+                local_shift_val = shift_val;
+            }  
+            printf("*ptr2:\n");
+            dma_print_temp(*ptr2);
+            unsigned int temp = *ptr2 << local_shift_val;
+            unsigned int temp2 = temp >> local_shift_val;
+            printf("temp2 is:\n");
+            dma_print_temp(temp2);
+            unsigned int temp8 = temp2;
+            if(shift_val != 0){
+                //unsigned int temp7 = *ptr2 << newsize;
+                //temp8 = temp7 >> newsize;
+                change_val = change_val >> local_shift_val;
+            }
+            printf("change val is:\n");
+            dma_print_temp(change_val);
+            printf("temp8 is:\n");
+            dma_print_temp(temp8);
+            unsigned int temp3 = *ptr2 ^ temp2;
+            unsigned int temp4 = temp8 ^ change_val;
+            printf("temp4 is:\n");
+            dma_print_temp(temp4);
+            unsigned int temp6 = temp3 | temp4;
+            printf("temp6 is:\n");
+            dma_print_temp(temp6);
+            newsize = newsize - local_shift_val_temp;
+            shift_val = 32;
+            printf("ptr2 before %lx\n", (long)ptr2);
+            memcpy(ptr2, &temp6, sizeof(unsigned int));
+            printf(" after *ptr2:\n");
+            dma_print_temp(*ptr2);
+        }
+         ptr2 = ptr2 +1;
+         cur_bit = cur_bit -32;
     }
-
-
-
+    fragsize += ((newsize*8)-size);
     return ptr;
 }
 void* lookbitmap(int size){
     int i;
     int empty= 0;
     int total_bit = bitmapsize * 8;
-    //int total_bit = 32; //sil
-    //unsigned int * bitmap = malloc(sizeof(unsigned int)); // sil
-    //*bitmap = 3486908413; //sil
     int iteration = total_bit / 32;
     int cur_bit = total_bit;
     int iter_mod = total_bit%32;
@@ -169,4 +223,85 @@ void* lookbitmap(int size){
     return NULL;
     
 }
+void dma_print_bitmap(){
+    printf("in print bitmapptr:%lx\n", (long) bitmap);
+    unsigned int* ptr = bitmap;
+    int total_bit = bitmapsize * 8;
+    int iteration = total_bit / 32;
+    int iter_mod = total_bit%32;
+    if(iter_mod != 0){
+        iteration++;
+    }
+    int k;
+    for(k = 0; k < iteration; k++){
+        unsigned int n = *ptr;
+        int i;
+        for (i = 31; i >= 0; i--) {
+            unsigned int j = n >> i;
+            if (j & 1)
+                printf("1");
+            else
+                printf("0");
+            if(i % 8 == 0){
+                printf(" ");
+            }
+        }
+        if(k %2 == 1){
+            printf("\n");
+        }
+        ptr = ptr +1;
+    }
+}
+void dma_print_temp(unsigned int temp){
+        int i;
+        for (i = 31; i >= 0; i--) {
+            unsigned int j = temp >> i;
+            if (j & 1)
+                printf("1");
+            else
+                printf("0");
+        }
+        printf("\n");
+}
+int dma_give_intfrag(){
+    return fragsize;
+}
+void dma_print_page(int pno){
+    
+    int maxpagenum = (bitmapsize + segmentsize + 256) / 4096;
+    if(pno >= maxpagenum || pno < 0){
+        printf("Invalid pno\n");
+    }
+    else{
+        unsigned int *ptr;
+        ptr = bitmap;
+        ptr = ptr + 1024 * pno;
+        int j;
+        dma_print_temp(*ptr);
+        for(j = 0; j <1024; j++){
+            //print
+            if(j%8 ==0){
+                printf("\n");
+            }
+            long  quot, remain;
+            int i, k = 0;
+            char hexadecimal[8] = {'0','0','0','0','0','0','0','0'};
 
+            quot = *ptr;
+            while (quot!= 0)
+            {
+                remain= quot % 16;
+                if (remain < 10)
+                    hexadecimal[k++] = 48 + remain;
+                else
+                    hexadecimal[k++] = 55 + remain;
+                quot = quot / 16;
+            }
+            // display integer into character
+            for (i = 7; i >= 0; i--)
+                printf("%c", hexadecimal[i]);
+            ptr = ptr +1;
+        }
+    }
+    printf("\n");
+}
