@@ -21,6 +21,7 @@ pthread_mutex_t lp, lp2, lp3, lp4, lp5;
 void* lookbitmap(int size);
 void dma_print_temp(unsigned int temp);
 void toHex(int size);
+void toHexAddress(long size);
 
 int dma_init(int m){
     void *p;
@@ -163,6 +164,7 @@ void *dma_alloc (int size){
     if(newsize %2 == 1){
         newsize++;
     }
+    int initialsize = newsize;
     pthread_mutex_lock(&lp);
     void* ptr = lookbitmap(size);
     if(size > segmentsize){
@@ -246,7 +248,7 @@ void *dma_alloc (int size){
          ptr2 = ptr2 +1;
          cur_bit = cur_bit -32;
     }
-    fragsize += ((newsize*8)-size);
+    fragsize += ((initialsize*8)-size);
     pthread_mutex_unlock(&lp);
     return ptr;
 }
@@ -414,7 +416,9 @@ void dma_print_blocks(){
             result2 = (*ptr) & change_val_alloc;
             if(result == change_val_free){ 
                 if(free == 0 && allocated > 0){
-                    printf("A, 0x%lx, 0x", (long)ptr2);
+                    printf("A, 0x");
+                    toHexAddress((long)ptr2);
+                    printf(", 0x");
                     toHex(allocated*16);
                     printf(" (%d)\n",(allocated*16));
                     ptr2 = ptr2 + (allocated *4);
@@ -424,13 +428,17 @@ void dma_print_blocks(){
             }
             else if(result2 == control_val_alloc){ 
                 if(free > 0){
-                    printf("F, 0x%lx, 0x", (long)ptr2);
+                    printf("F, 0x");
+                    toHexAddress((long)ptr2);
+                    printf(", 0x");
                     toHex(free*16);
                     printf(" (%d)\n",(free*16));
                     ptr2 = ptr2 + (free *4);
                 }
                 else if(allocated > 0){
-                    printf("A, 0x%lx, 0x", (long)ptr2);
+                    printf("A, 0x");
+                    toHexAddress((long)ptr2);
+                    printf(", 0x");
                     toHex(allocated*16);
                     printf(" (%d)\n",(allocated*16));
                     ptr2 = ptr2 + (allocated *4);
@@ -449,12 +457,16 @@ void dma_print_blocks(){
         ptr = ptr + 1;
     }
     if(free > 0){
-        printf("F, 0x%lx, 0x", (long)ptr2);
+        printf("F, 0x");
+        toHexAddress((long)ptr2);
+        printf(", 0x");
         toHex(free*16);
         printf(" (%d)\n",(free*16));
     }
     else if(allocated > 0){
-        printf("A, 0x%lx, 0x", (long)ptr2);
+        printf("A, 0x");
+        toHexAddress((long)ptr2);
+        printf(", 0x");
         toHex(allocated*16);
         printf(" (%d)\n",(allocated*16));
     }
@@ -478,6 +490,25 @@ void toHex(int size){
     }
     // display integer into character
     for (i = 99; i >= 0; i--)
+        printf("%c", hexadecimal[i]);
+}
+void toHexAddress(long size){
+    long  quot, remain;
+    int i, k = 0;
+    char hexadecimal[16] = {'0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0'};
+
+    quot = size;
+    while (quot!= 0)
+    {
+        remain= quot % 16;
+        if (remain < 10)
+            hexadecimal[k++] = 48 + remain;
+        else
+            hexadecimal[k++] = 55 + remain;
+        quot = quot / 16;
+    }
+    // display integer into character
+    for (i = 16; i >= 0; i--)
         printf("%c", hexadecimal[i]);
 }
 
