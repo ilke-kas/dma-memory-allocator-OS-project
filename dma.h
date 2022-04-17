@@ -9,4 +9,5 @@ void dma_print_blocks();
 int dma_give_intfrag();
 void* lookbitmap(int size);
 void dma_print_temp(unsigned int temp);
+void toHex(int size);
 #endif

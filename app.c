@@ -22,10 +22,15 @@ int main(){
     //void* ptrx4 = dma_alloc(288);
      //dma_print_bitmap();
     //void* ptrx4 = dma_alloc(65);
+    //dma_free(ptrx4);
+   // dma_print_bitmap();
     dma_free(ptrx4);
-    dma_print_bitmap();
     dma_free(ptrx);
-    dma_print_bitmap();
+    dma_free(ptrx2);
+
+    //dma_print_bitmap();
+
+    dma_print_blocks();
 
     //dma_print_page(0);
 

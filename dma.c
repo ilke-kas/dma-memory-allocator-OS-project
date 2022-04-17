@@ -413,4 +413,105 @@ void dma_print_page(int pno){
     }
     printf("\n");
 }
+void dma_print_blocks(){
+    unsigned int* ptr = (unsigned int*)bitmap;
+    unsigned int* ptr2 = (unsigned int*)segmentptr;
+    int total_bit = bitmapsize * 8;
+    int iteration = total_bit / 32;
+    int iter_mod = total_bit%32;
+    if(iter_mod != 0){
+        iteration++;
+    }
+    int k;
+    int free = 0;
+    int allocated = 0;
+    for(k = 0; k < iteration; k++){
+        unsigned int change_val_free= pow(2,31) + pow(2,30);
+        unsigned int change_val_alloc= pow(2,30);
+        unsigned int control_val_alloc =pow(2,30);
+        int i;
+        unsigned int result;
+        unsigned int result2;
+        for(i = 0; i <16; i++){
+            result = (*ptr) & change_val_free;
+            result2 = (*ptr) & change_val_alloc;
+            /*printf("i:%d, allocated:%d, free:%d\n",i,allocated,free);
+            printf("result:\n");
+            dma_print_temp(result);
+            printf("result2:\n");
+            dma_print_temp(result2);
+            printf("cvalloc:\n");
+            dma_print_temp(change_val_alloc);
+            printf("cvfree:\n");
+            dma_print_temp(change_val_free);*/
+            if(result == change_val_free){ 
+                if(free == 0 && allocated > 0){
+                    printf("A, 0x%lx, 0x", (long)ptr2);
+                    toHex(allocated*16);
+                    printf("(%d)\n",(allocated*16));
+                    ptr2 = ptr2 + (allocated *4);
+                }
+                free++;
+                allocated = 0;
+            }
+            else if(result2 == control_val_alloc){ 
+                //printf("i:%d girdi\n",i);
+                if(free > 0){
+                    printf("F, 0x%lx, 0x", (long)ptr2);
+                    toHex(free*16);
+                    printf("(%d)\n",(free*16));
+                    ptr2 = ptr2 + (free *4);
+                }
+                else if(allocated > 0){
+                    printf("A, 0x%lx, 0x", (long)ptr2);
+                    toHex(allocated*16);
+                    printf("(%d)\n",(allocated*16));
+                    ptr2 = ptr2 + (allocated *4);
+                }
+                allocated = 1;
+                free = 0;
+            }
+            else{
+                allocated++;
+                free = 0;
+            }
+            change_val_free = change_val_free >> 2;
+            change_val_alloc = change_val_alloc >> 2;
+            control_val_alloc = control_val_alloc >>2;
+        }
+        ptr = ptr + 1;
+
+    }
+    if(free > 0){
+        printf("F, 0x%lx, 0x", (long)ptr2);
+        toHex(free*16);
+        printf("(%d)\n",(free*16));
+    }
+    else if(allocated > 0){
+        printf("A, 0x%lx, 0x", (long)ptr2);
+        toHex(allocated*16);
+        printf("(%d)\n",(allocated*16));
+    }
+
+}
+
+void toHex(int size){
+    long  quot, remain;
+    int i, k = 0;
+    char hexadecimal[100] = {'0'};
+
+    quot = size;
+    while (quot!= 0)
+    {
+        remain= quot % 16;
+        if (remain < 10)
+            hexadecimal[k++] = 48 + remain;
+        else
+            hexadecimal[k++] = 55 + remain;
+        quot = quot / 16;
+    }
+    // display integer into character
+    for (i = 99; i >= 0; i--)
+        printf("%c", hexadecimal[i]);
+}
 
